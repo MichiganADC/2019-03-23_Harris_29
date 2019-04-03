@@ -1,0 +1,356 @@
+---
+title: "2019-03-23_Harris_29"
+author: "Nicolas May"
+date: "4/3/2019"
+output: 
+  html_document:
+    theme: sandstone
+    highlight: zenburn
+    toc: true
+    toc_float: true
+---
+
+# BUILD DATASET
+
+## Load Requirements
+
+### Load Packages
+
+```{r}
+suppressMessages( library(dplyr)   )
+suppressMessages( library(stringr) )
+```
+
+### Load Useful Globals / Functions
+
+```{r}
+source("~/Desktop/config.R")
+source("~/Desktop/helpers.R")
+
+GET_API_DATA <- TRUE
+```
+
+
+## Get Data
+
+### Define Data Fields/Forms
+
+UDS 3
+
+```{r}
+# Header form
+fields_u3_hd_vct <-
+  c(
+    "ptid"
+    , "form_date"
+  )
+# A1 form
+fields_u3_a1_vct <-
+  c(
+    "sex"
+    , "hispanic"
+    , "race"
+    , "residenc"
+  ) %>% 
+  c(., paste0("fu_", .), paste0("tele_", .))
+# D1 form
+fields_u3_d1_vct <-
+  c(
+    # Normal cognition
+    "normcog"
+    # Dementia
+    , "demented"
+    # Syndromes
+    , "amndem"
+    # , "pca"
+    # , "ppasyn"
+    # , "ftdsyn"
+    # , "lbdsyn"
+    # , "namndem"
+    # Etiologies
+    , "alzdis"
+    , "alzdisif"
+    , "cvd"
+    , "cvdif"
+  ) %>% 
+  c(., paste0("fu_", .), paste0("tele_", .))
+
+# Collapse `fields_u3_*_vct`s
+fields_u3_vct <-
+  c(
+    fields_u3_hd_vct
+    , fields_u3_a1_vct
+    , fields_u3_d1_vct
+  )
+fields_u3 <- fields_u3_vct %>% paste(collapse = ",")
+```
+
+MiNDSet Registry
+
+```{r}
+# Registration Form
+fields_ms_reg_vct <-
+  c(
+    "subject_id"
+  )
+# Demographics Form
+fields_ms_dem_vct <-
+  c(
+    "race_value"
+    , "sex_value"
+  )
+# Medical Visit Form
+fields_ms_med_vct <-
+  c(
+    "exam_date"
+  )
+
+fields_ms_vct <-
+  c(
+    fields_ms_reg_vct
+    , fields_ms_dem_vct
+    , fields_ms_med_vct
+  )
+fields_ms <- fields_ms_vct %>% paste(collapse = ",")
+```
+
+
+### Retrieve Data via REDCap API
+
+UDS 3
+
+```{r}
+if (GET_API_DATA) {
+  json_u3 <- rc_api_get(uri    = REDCAP_API_URI,
+                        token  = REDCAP_API_TOKEN_UDS3n,
+                        fields = fields_u3,
+                        raw    = TRUE)
+}
+df_u3 <- jsonlite::fromJSON(json_u3) %>% na_if("")
+```
+
+MiNDSet Registry
+
+```{r}
+if (GET_API_DATA) {
+  json_ms <- rc_api_get(uri    = REDCAP_API_URI,
+                        token  = REDCAP_API_TOKEN_MINDSET,
+                        fields = fields_ms,
+                        raw    = TRUE)
+}
+df_ms <- jsonlite::fromJSON(json_ms) %>% na_if("")
+```
+
+
+## Process Data
+
+### Clean Data
+
+UDS 3
+
+```{r}
+df_u3_cln <- df_u3 %>% 
+  # remove useless `redcap_event_name` field
+  select(-redcap_event_name) %>% 
+  # clean out records missing `form_date`s
+  filter(!is.na(form_date)) %>% 
+  # clean out DDE records
+  filter(str_detect(ptid, pattern = "^UM\\d{8}$"))
+```
+
+MiNDSet Registry
+
+```{r}
+df_ms_cln <- df_ms %>% 
+  # remove useless `redcap_event_name` field
+  select(-redcap_event_name) %>% 
+  # clean out records missing `exam_date`s
+  filter(!is.na(exam_date)) %>% 
+  # clean out non-UMMAP IDs
+  filter(str_detect(subject_id, pattern = "^UM\\d{8}$"))
+```
+
+
+### Mutate Data
+
+UDS 3
+
+```{r}
+df_u3_cln_mut <- df_u3_cln %>% 
+  # coalesce IVP / FVP / TVP fields
+  coalesce_ift_cols() %>% 
+  # retype fields appropriately
+  mutate(form_date = as.Date(form_date)) %>% 
+  # get most recent visit only
+  get_visit_n(ptid, form_date, Inf) %>% 
+  # simplify diagnosis
+  mutate(uds_dx = case_when(
+    normcog    == 0 &
+      demented == 1 &
+      amndem   == 1 &
+      alzdis   == 1 &
+      alzdisif == 1 ~ "Alzheimer's Disease",
+    normcog    == 0 &
+      demented == 1 &
+      cvd      == 1 &
+      cvdif    == 1 ~ "Vascular Dementia",
+    TRUE ~ NA_character_
+  ))
+### Alzheimer's Disease:
+###   normcog  == 0 &
+###   demented == 1 &
+###   amndem   == 1 &
+###   alzdis   == 1 &
+###   alzdisif == 1
+### Vascular Dementia:
+###   normcog  == 0 &
+###   demented == 1 &
+###   cvd      == 1 &
+###   cvdif    == 1
+```
+
+MiNDSet Registry
+
+```{r}
+df_ms_cln_mut <- df_ms_cln %>% 
+  # retype fields appropriately
+  mutate(exam_date = as.Date(exam_date)) %>% 
+  # change `race_value` to match UDS 3 `race`
+  mutate(race_ms = case_when(
+    race_value == 1 ~ 1L,
+    race_value == 2 ~ 2L,
+    race_value == 3 ~ 5L,
+    race_value == 5 ~ 50L,
+    race_value == 6 ~ 99L,
+    TRUE ~ NA_integer_
+  )) %>% 
+  mutate(sex_ms = sex_value) %>% 
+  # deselect unneeded fileds
+  select(-race_value, -sex_value)
+```
+
+
+### Filter Data
+
+UDS 3
+
+```{r}
+df_u3_cln_mut_flt <- df_u3_cln_mut %>% 
+  filter(!is.na(uds_dx))
+```
+
+### Join Data
+
+UDS 3 + MiNDSet Registry
+
+```{r}
+df_u3_ms <- left_join(x = df_u3_cln_mut_flt, 
+                      y = df_ms_cln_mut,
+                      by = c("ptid" = "subject_id",
+                             "form_date" = "exam_date"))
+# Coalesce sex and race fields
+df_u3_ms_mut <- df_u3_ms %>% 
+  mutate(sex = coalesce(as.integer(sex), as.integer(sex_ms))) %>% 
+  mutate(race = coalesce(as.integer(race), as.integer(race_ms))) %>% 
+  select(-sex_ms, -race_ms)
+
+# Clean up 
+df_u3_ms_mut_cln <- df_u3_ms_mut %>% 
+  mutate(hispanic = case_when(
+    hispanic == 1 ~ 1L,
+    TRUE ~ 0L
+  )) %>% 
+  select(-normcog
+         , -demented
+         , -amndem
+         , -alzdis
+         , -alzdisif
+         , -cvd
+         , -cvdif)
+
+# Hash pt. IDs
+df_u3_ms_mut_cln_hsh <- df_u3_ms_mut_cln %>% 
+  mutate(ptid = openssl::md5(ptid))
+```
+
+Convert raw data to labelled data
+
+```{r}
+df_u3_ms_mut_cln_hsh_lbl <- df_u3_ms_mut_cln_hsh %>% 
+  # sex
+  mutate(sex = case_when(
+    sex == 1 ~ "Male",
+    sex == 2 ~ "Female",
+    TRUE ~ NA_character_
+  )) %>% 
+  # race
+  mutate(race = case_when(
+    race == 1 ~ "White",
+    race == 2 ~ "Black or African American",
+    race == 3 ~ "American Indian or Alaska Native",
+    race == 4 ~ "Native Hawaiian or other Pacific Islander",
+    race == 5 ~ "Asian",
+    race == 50 ~ "Other",
+    race == 99 ~ "Unknown",
+    TRUE ~ NA_character_
+  )) %>% 
+  # hispanic ethnicity
+  mutate(hispanic = case_when(
+    hispanic == 1 ~ "Hispanic ethnicity",
+    TRUE ~ NA_character_
+  )) %>% 
+  # residence
+  mutate(residenc = case_when(
+    residenc == 1 ~ "Single- or multi-family private residence",
+    residenc == 2 ~ "Retirement community or independent group living",
+    residenc == 3 ~ "Assisted living, adult family home, or boarding home",
+    residenc == 4 ~ 
+      "Skilled nusring facility, nursing home, hospital, or hospice",
+    residenc == 9 ~ "Unknown",
+    TRUE ~ NA_character_
+  )) 
+```
+
+
+
+## Write Data
+
+### Write as CSV
+
+```{r}
+# raw data
+readr::write_csv(df_u3_ms_mut_cln_hsh,
+                 "df_u3_ms_mut_cln_hsh.csv",
+                 na = "")
+# label data
+readr::write_csv(df_u3_ms_mut_cln_hsh_lbl, 
+                 "df_u3_ms_mut_cln_hsh_lbl.csv", 
+                 na = "")
+```
+
+
+## Summarize Data
+
+```{r}
+(uds_dx_summ <- df_u3_ms_mut_cln_hsh_lbl %>% 
+   group_by(sex, race, hispanic, residenc, uds_dx) %>% 
+   tally() %>% 
+   arrange(uds_dx, sex, race, hispanic, residenc) %>% 
+   select(uds_dx, sex, race, hispanic, residenc, everything()))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
