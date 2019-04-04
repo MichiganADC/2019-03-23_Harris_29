@@ -332,11 +332,27 @@ readr::write_csv(df_u3_ms_mut_cln_hsh_lbl,
 ## Summarize Data
 
 ```{r}
-(uds_dx_summ <- df_u3_ms_mut_cln_hsh_lbl %>% 
-   group_by(sex, race, hispanic, residenc, uds_dx) %>% 
-   tally() %>% 
-   arrange(uds_dx, sex, race, hispanic, residenc) %>% 
-   select(uds_dx, sex, race, hispanic, residenc, everything()))
+custom_summarize <- function(df, ...) {
+  df %>% 
+    group_by(...) %>% 
+    tally() %>% 
+    arrange(...) %>% 
+    select(..., everything())
+}
+
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl, sex) %>% 
+  knitr::kable()
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl, race) %>% 
+  knitr::kable()
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl, hispanic) %>% 
+  knitr::kable()
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl, residenc) %>% 
+  knitr::kable()
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl, uds_dx) %>% 
+  knitr::kable()
+custom_summarize(df_u3_ms_mut_cln_hsh_lbl,
+                 sex, race, hispanic, residenc, uds_dx) %>% 
+  knitr::kable()
 ```
 
 

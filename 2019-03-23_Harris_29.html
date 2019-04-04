@@ -617,23 +617,199 @@ readr<span class="op">::</span><span class="kw">write_csv</span>(df_u3_ms_mut_cl
 </div>
 <div id="summarize-data" class="section level2">
 <h2>Summarize Data</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(uds_dx_summ &lt;-<span class="st"> </span>df_u3_ms_mut_cln_hsh_lbl <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">   </span><span class="kw">group_by</span>(sex, race, hispanic, residenc, uds_dx) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">   </span><span class="kw">tally</span>() <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">   </span><span class="kw">arrange</span>(uds_dx, sex, race, hispanic, residenc) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">   </span><span class="kw">select</span>(uds_dx, sex, race, hispanic, residenc, <span class="kw">everything</span>()))</code></pre></div>
-<pre><code>## # A tibble: 8 x 6
-## # Groups:   sex, race, hispanic, residenc [7]
-##   uds_dx      sex    race         hispanic    residenc                    n
-##   &lt;chr&gt;       &lt;chr&gt;  &lt;chr&gt;        &lt;chr&gt;       &lt;chr&gt;                   &lt;int&gt;
-## 1 Alzheimer'… Female Black or Af… &lt;NA&gt;        Single- or multi-famil…     2
-## 2 Alzheimer'… Female White        &lt;NA&gt;        Single- or multi-famil…    26
-## 3 Alzheimer'… Male   Black or Af… &lt;NA&gt;        Single- or multi-famil…     4
-## 4 Alzheimer'… Male   White        Hispanic e… Single- or multi-famil…     1
-## 5 Alzheimer'… Male   White        &lt;NA&gt;        Assisted living, adult…     1
-## 6 Alzheimer'… Male   White        &lt;NA&gt;        Retirement community o…     1
-## 7 Alzheimer'… Male   White        &lt;NA&gt;        Single- or multi-famil…    15
-## 8 Vascular D… Male   Black or Af… &lt;NA&gt;        Single- or multi-famil…     1</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">custom_summarize &lt;-<span class="st"> </span><span class="cf">function</span>(df, ...) {
+  df <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">group_by</span>(...) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">tally</span>() <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">arrange</span>(...) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">select</span>(..., <span class="kw">everything</span>())
+}
+
+<span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl, sex) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">sex</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Female</td>
+<td align="right">28</td>
+</tr>
+<tr class="even">
+<td align="left">Male</td>
+<td align="right">23</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl, race) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">race</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Black or African American</td>
+<td align="right">7</td>
+</tr>
+<tr class="even">
+<td align="left">White</td>
+<td align="right">44</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl, hispanic) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">hispanic</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Hispanic ethnicity</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">NA</td>
+<td align="right">50</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl, residenc) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">residenc</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Assisted living, adult family home, or boarding home</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Retirement community or independent group living</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">Single- or multi-family private residence</td>
+<td align="right">49</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl, uds_dx) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">uds_dx</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">50</td>
+</tr>
+<tr class="even">
+<td align="left">Vascular Dementia</td>
+<td align="right">1</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">custom_summarize</span>(df_u3_ms_mut_cln_hsh_lbl,
+                 sex, race, hispanic, residenc, uds_dx) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>knitr<span class="op">::</span><span class="kw">kable</span>()</code></pre></div>
+<table>
+<thead>
+<tr class="header">
+<th align="left">sex</th>
+<th align="left">race</th>
+<th align="left">hispanic</th>
+<th align="left">residenc</th>
+<th align="left">uds_dx</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Female</td>
+<td align="left">Black or African American</td>
+<td align="left">NA</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="left">Female</td>
+<td align="left">White</td>
+<td align="left">NA</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">26</td>
+</tr>
+<tr class="odd">
+<td align="left">Male</td>
+<td align="left">Black or African American</td>
+<td align="left">NA</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="left">Male</td>
+<td align="left">Black or African American</td>
+<td align="left">NA</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Vascular Dementia</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">Male</td>
+<td align="left">White</td>
+<td align="left">Hispanic ethnicity</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Male</td>
+<td align="left">White</td>
+<td align="left">NA</td>
+<td align="left">Assisted living, adult family home, or boarding home</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="left">Male</td>
+<td align="left">White</td>
+<td align="left">NA</td>
+<td align="left">Retirement community or independent group living</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">1</td>
+</tr>
+<tr class="even">
+<td align="left">Male</td>
+<td align="left">White</td>
+<td align="left">NA</td>
+<td align="left">Single- or multi-family private residence</td>
+<td align="left">Alzheimer’s Disease</td>
+<td align="right">15</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 
